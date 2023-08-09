@@ -57,10 +57,10 @@ private:
 public:
     CSettings()
     {
-        auto pattern = hook::pattern("8B 04 FD ? ? ? ? 5F 5E C3");
-        auto pattern2 = hook::pattern("FF 34 FD ? ? ? ? 56 E8 ? ? ? ? 83 C4 08 85 C0 0F 84 ? ? ? ? 47 81 FF");
-        auto originalPrefs = *pattern.count(4).get(3).get<MenuPrefs*>(3);
-        auto pOriginalPrefsNum = pattern2.get_first<uint32_t>(27);
+        auto pattern = hook::pattern("8B 04 F5 ? ? ? ? 5E C3 8B 04 F5");
+        auto pattern2 = hook::pattern("8B 04 F5 ? ? ? ? 50 57 E8 ? ? ? ? 83 C4 08 85 C0 74 7C 83 C6 01");
+        auto originalPrefs = *pattern.count(4).get(0).get<MenuPrefs*>(3);
+        auto pOriginalPrefsNum = pattern2.get_first<uint32_t>(26);
 
         for (auto i = 0; originalPrefs[i].prefID < *pOriginalPrefsNum; i++)
         {
@@ -70,10 +70,10 @@ public:
         aMenuPrefs.reserve(aMenuPrefs.size() * 2);
         firstCustomID = aMenuPrefs.back().prefID + 1;
 
-        injector::WriteMemory(pattern.count(4).get(3).get<void*>(3), &aMenuPrefs[0].prefID, true);
+        injector::WriteMemory(pattern.count(4).get(0).get<void*>(3), &aMenuPrefs[0].prefID, true);
         injector::WriteMemory(pattern2.get_first(3), &aMenuPrefs[0].name, true);
 
-        pattern = hook::pattern("89 1C 95 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 83 C4 04");
+        pattern = hook::pattern("89 1C 8D ? ? ? ? E8");
         mPrefs = *pattern.get_first<int32_t*>(3);
 
         CIniReader iniReader("");
@@ -86,7 +86,7 @@ public:
             { 0, "PREF_FXAA",             "MISC",       "FXAA",               1, nullptr },
             { 0, "PREF_CONSOLE_GAMMA",    "MISC",       "ConsoleGamma",       0, nullptr },
             { 0, "PREF_TIMECYC",          "MISC",       "ScreenFilter",       5, nullptr },
-            { 0, "PREF_TCYC_DOF",         "MISC",       "DepthOfField",       1, nullptr },
+			{ 0, "PREF_TCYC_DOF",         "MISC",       "DepthOfField",       1, nullptr },
         };
 
         auto i = firstCustomID;
@@ -102,11 +102,11 @@ public:
 
         // MENU_DISPLAY enums hook
         static std::vector<MenuPrefs> aMenuEnums;
-        pattern = hook::pattern("8B 04 FD ? ? ? ? 5F 5E C3");
-        pattern2 = hook::pattern("FF 34 FD ? ? ? ? 56 E8 ? ? ? ? 83 C4 08 85 C0 0F 84 ? ? ? ? 47 83 FF 3C");
-        auto pattern3 = hook::pattern("83 FE 3C 7C E6");
-        auto originalEnums = *pattern.count(4).get(1).get<MenuPrefs*>(3);
-        auto pOriginalEnumsNum = pattern2.get_first<uint8_t>(27);
+        pattern = hook::pattern("8B 04 F5 ? ? ? ? 5E C3 8B 04 F5");
+        pattern2 = hook::pattern("8B 14 F5 ? ? ? ? 52 57 E8");
+        auto pattern3 = hook::pattern("83 FE 3C 7C E3 33 C0 5E");
+        auto originalEnums = *pattern.count(4).get(2).get<MenuPrefs*>(3);
+        auto pOriginalEnumsNum = pattern2.get_first<uint8_t>(26);
         auto pOriginalEnumsNum2 = pattern3.get_first<uint8_t>(2);
 
         for (auto i = 0; originalEnums[i].prefID < *pOriginalEnumsNum; i++)
@@ -116,12 +116,10 @@ public:
         aMenuEnums.reserve(aMenuEnums.size() * 2);
         auto firstEnumCustomID = aMenuEnums.back().prefID + 1;
 
-        injector::WriteMemory(pattern.count(4).get(1).get<void*>(3), &aMenuEnums[0].prefID, true);
+        injector::WriteMemory(pattern.count(4).get(2).get<void*>(3), &aMenuEnums[0].prefID, true);
         injector::WriteMemory(pattern2.get_first(3), &aMenuEnums[0].name, true);
-        pattern = hook::pattern("8B 04 F5 ? ? ? ? 5F 5E C3 8B 04 F5");
-        injector::WriteMemory(pattern.get_first(3), &aMenuEnums[0].prefID, true);
-        pattern = hook::pattern("FF 34 F5 ? ? ? ? 57 E8 ? ? ? ? 83 C4 08 85 C0 74 0B 46 83 FE 3C");
-        injector::WriteMemory(pattern.get_first(3), &aMenuEnums[0].name, true);
+        injector::WriteMemory(pattern3.get_first(12), &aMenuEnums[0].prefID, true);
+        injector::WriteMemory(pattern3.get_first(-21), &aMenuEnums[0].name, true);
 
         static auto MENU_DISPLAY_FRAMELIMIT = "MENU_DISPLAY_FRAMELIMIT";
         static auto MENU_DISPLAY_TIMECYC = "MENU_DISPLAY_TIMECYC";
@@ -188,7 +186,6 @@ public:
 
 int32_t nFrameLimitType;
 float fFpsLimit;
-float fCutsceneFpsLimit;
 float fScriptCutsceneFpsLimit;
 float fScriptCutsceneFovLimit;
 std::vector<int32_t> fpsCaps = { 0, 1, 2, 30, 40, 50, 60, 75, 100, 120, 144, 165, 240, 360 };
@@ -203,11 +200,11 @@ private:
     double TIME_Ticks = 0.0;
     double TIME_Frametime = 0.0;
     float  fFPSLimit = 0.0f;
-    bool   bFpsLimitWasUpdated = false;
+	bool   bFpsLimitWasUpdated = false;
 public:
     void Init(FPSLimitMode mode, float fps_limit)
     {
-        bFpsLimitWasUpdated = true;
+		bFpsLimitWasUpdated = true;
         mFPSLimitMode = mode;
         fFPSLimit = fps_limit;
 
@@ -228,11 +225,11 @@ public:
     }
     DWORD Sync_RT()
     {
-        if (bFpsLimitWasUpdated)
-        {
-            bFpsLimitWasUpdated = false;
-            return 1;
-        }
+		if (bFpsLimitWasUpdated)
+		{
+			bFpsLimitWasUpdated = false;
+			return 1;
+		}
 
         DWORD lastTicks, currentTicks;
         LARGE_INTEGER counter;
@@ -246,11 +243,11 @@ public:
     }
     DWORD Sync_SLP()
     {
-        if (bFpsLimitWasUpdated)
-        {
-            bFpsLimitWasUpdated = false;
-            return 1;
-        }
+		if (bFpsLimitWasUpdated)
+		{
+			bFpsLimitWasUpdated = false;
+			return 1;
+		}
 
         LARGE_INTEGER counter;
         QueryPerformanceCounter(&counter);
@@ -287,23 +284,22 @@ private:
 bool bLoadingShown = false;
 bool __cdecl sub_411F50(uint32_t* a1, uint32_t* a2)
 {
-    bLoadingShown = false;
-    if (!a1[2] && !a2[2]) {
-        bLoadingShown = *a1 == *a2;
-        return *a1 == *a2;
-    }
-    if (a1[2] != a2[2])
-        return false;
-    if (a1[0] != a2[0])
-        return false;
-    if (a1[1] != a2[1])
-        return false;
-    bLoadingShown = true;
-    return true;
+	bLoadingShown = false;
+	if (!a1[2] && !a2[2]) {
+		bLoadingShown = *a1 == *a2;
+		return *a1 == *a2;
+	}
+	if (a1[2] != a2[2])
+		return false;
+	if (a1[0] != a2[0])
+		return false;
+	if (a1[1] != a2[1])
+		return false;
+	bLoadingShown = true;
+	return true;
 }
 
 FrameLimiter FpsLimiter;
-FrameLimiter CutsceneFpsLimiter;
 FrameLimiter ScriptCutsceneFpsLimiter;
 bool(*CCutscenes__hasCutsceneFinished)();
 bool(*CCamera__isWidescreenBordersActive)();
@@ -312,20 +308,18 @@ void __cdecl sub_855640()
 {
     static auto preset = FusionFixSettings.GetRef("PREF_FPS_LIMIT_PRESET");
 
-    if (bLoadscreenShown && !*bLoadscreenShown && !bLoadingShown)
-    {
-        if (preset && *preset >= 2) {
-            if (fFpsLimit > 0.0f || (*preset > 2 && *preset < fpsCaps.size()))
-                FpsLimiter.Sync();
-        }
-    }
+	if (bLoadscreenShown && !*bLoadscreenShown && !bLoadingShown)
+	{
+		if (preset && *preset >= 2) {
+			if (fFpsLimit > 0.0f || (*preset > 2 && *preset < fpsCaps.size()))
+				FpsLimiter.Sync();
+		}
+	}
 
     if (CCamera__isWidescreenBordersActive())
     {
         if (CCutscenes__hasCutsceneFinished())
-            if (fCutsceneFpsLimit)
-                CutsceneFpsLimiter.Sync();
-            else if (fScriptCutsceneFpsLimit)
+            if (fScriptCutsceneFpsLimit)
                 ScriptCutsceneFpsLimiter.Sync();
     }
 }
@@ -395,9 +389,9 @@ void SwitchWindowStyle()
     }
 }
 
-HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
+HWND WINAPI CreateWindowExW_Hook(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
-    gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, 0, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+    gWnd = CreateWindowExW(dwExStyle, lpClassName, lpWindowName, 0, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
     SwitchWindowStyle();
     return gWnd;
 }
@@ -495,6 +489,19 @@ int __cdecl sub_AE3DE0(int a1, int a2)
     return injector::cstd<int(int, int)>::call(fnAE3DE0, a1, a2);
 }
 
+static int bTimecycUpdated = 0;
+
+void* fnAD0B0 = nullptr;
+int __cdecl sub_AD0B0(int a1, int a2)
+{
+	if (bTimecycUpdated > 0)
+	{
+		bTimecycUpdated--;
+		return 0;
+	}
+	return injector::cstd<int()>::call(fnAD0B0);
+}
+
 void* CFileMgrOpenFile = nullptr;
 void* __cdecl sub_8C4CF0(char* a1, char* a2)
 {
@@ -557,31 +564,31 @@ void* __cdecl sub_8C4CF0(char* a1, char* a2)
 }
 
 int timecyc_scanf(const char* i, const char* fmt, int* a1, int* a2, int* a3, int* a4, int* a5, int* a6, int* a7, int* a8, int* a9, int* a10,
-    int* a11, int* a12, int* a13, int* a14, int* a15, int* a16, int* a17, int* a18, int* a19, int* a20, int* a21, float* a22, float* a23,
-    float* a24, float* a25, int* a26, int* a27, int* a28, int* a29, int* a30, int* a31, int* a32, int* a33, int* a34, int* a35, float* a36,
-    float* a37, float* a38, float* a39, int* a40, int* a41, int* a42, int* a43, int* a44, int* a45, float* a46, float* a47, float* a48, float* a49,
-    float* a50, float* a51, float* a52, float* a53, float* a54, float* a55, float* a56, int* a57, float* a58, float* a59, float* a60, float* a61,
-    float* a62, int* a63, float* a64, float* a65, float* a66, float* a67, float* a68, float* a69, float* a70, float* a71, float* a72, float* a73,
-    float* a74, float* a75, float* a76, float* a77, float* a78, float* a79, float* a80, float* a81, float* a82, float* a83, float* a84, float* a85,
-    float* a86, float* a87, float* a88, float* a89, float* a90, float* a91, float* a92, float* a93, float* a94, float* a95, float* a96, float* a97,
-    float* a98, float* a99, float* a100, float* a101, float* a102, float* a103, float* a104, float* a105, float* a106, float* a107, float* a108,
-    float* a109, float* a110, float* a111, float* a112, float* a113, float* a114, float* a115, float* a116, float* a117, float* a118, float* a119,
-    float* a120, float* a121, float* a122, float* a123, float* a124, float* a125, float* a126, float* a127, float* a128, float* a129, float* a130,
-    float* a131, float* a132, float* a133, float* a134)
+	int* a11, int* a12, int* a13, int* a14, int* a15, int* a16, int* a17, int* a18, int* a19, int* a20, int* a21, float* a22, float* a23,
+	float* a24, float* a25, int* a26, int* a27, int* a28, int* a29, int* a30, int* a31, int* a32, int* a33, int* a34, int* a35, float* a36,
+	float* a37, float* a38, float* a39, int* a40, int* a41, int* a42, int* a43, int* a44, int* a45, float* a46, float* a47, float* a48, float* a49,
+	float* a50, float* a51, float* a52, float* a53, float* a54, float* a55, float* a56, int* a57, float* a58, float* a59, float* a60, float* a61,
+	float* a62, int* a63, float* a64, float* a65, float* a66, float* a67, float* a68, float* a69, float* a70, float* a71, float* a72, float* a73,
+	float* a74, float* a75, float* a76, float* a77, float* a78, float* a79, float* a80, float* a81, float* a82, float* a83, float* a84, float* a85,
+	float* a86, float* a87, float* a88, float* a89, float* a90, float* a91, float* a92, float* a93, float* a94, float* a95, float* a96, float* a97,
+	float* a98, float* a99, float* a100, float* a101, float* a102, float* a103, float* a104, float* a105, float* a106, float* a107, float* a108,
+	float* a109, float* a110, float* a111, float* a112, float* a113, float* a114, float* a115, float* a116, float* a117, float* a118, float* a119,
+	float* a120, float* a121, float* a122, float* a123, float* a124, float* a125, float* a126, float* a127, float* a128, float* a129, float* a130,
+	float* a131, float* a132, float* a133, float* a134)
 {
-    auto res = sscanf(i, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27,
-        a28, a29, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a50, a51, a52, a53, a54, a55,
-        a56, a57, a58, a59, a60, a61, a62, a63, a64, a65, a66, a67, a68, a69, a70, a71, a72, a73, a74, a75, a76, a77, a78, a79, a80, a81, a82, a83,
-        a84, a85, a86, a87, a88, a89, a90, a91, a92, a93, a94, a95, a96, a97, a98, a99, a100, a101, a102, a103, a104, a105, a106, a107, a108, a109,
-        a110, a111, a112, a113, a114, a115, a116, a117, a118, a119, a120, a121, a122, a123, a124, a125, a126, a127, a128, a129, a130, a131, a132,
-        a133, a134);
+	auto res = sscanf(i, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27,
+		a28, a29, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a50, a51, a52, a53, a54, a55,
+		a56, a57, a58, a59, a60, a61, a62, a63, a64, a65, a66, a67, a68, a69, a70, a71, a72, a73, a74, a75, a76, a77, a78, a79, a80, a81, a82, a83,
+		a84, a85, a86, a87, a88, a89, a90, a91, a92, a93, a94, a95, a96, a97, a98, a99, a100, a101, a102, a103, a104, a105, a106, a107, a108, a109,
+		a110, a111, a112, a113, a114, a115, a116, a117, a118, a119, a120, a121, a122, a123, a124, a125, a126, a127, a128, a129, a130, a131, a132,
+		a133, a134);
 
-    if (FusionFixSettings("PREF_TCYC_DOF") == 0) {
-        *a124 = 0.0f;
-        *a125 = 0.0f;
-    }
+	if (FusionFixSettings("PREF_TCYC_DOF") == 0) {
+		*a124 = 0.0f;
+		*a125 = 0.0f;
+	}
 
-    return res;
+	return res;
 }
 
 int32_t bExtraDynamicShadows;
@@ -614,8 +621,8 @@ void* __cdecl CModelInfoStore__allocateInstanceModelHook(char* modelName)
             "w_birch_md_ingame_2", "w_r_cedar_md_ingame", "w_r_cedar_md_ing_2", "scotchpine2", "scotchpine4",
             "tree_redcedar", "tree_redcedar2"
         };
-        if (std::any_of(std::begin(treeNames), std::end(treeNames), [](auto& i) { return i == curModelName; }))
-            return injector::cstd<void* (char*)>::call(CModelInfoStore__allocateBaseModel, modelName);
+		if (std::any_of(std::begin(treeNames), std::end(treeNames), [](auto& i) { return i == curModelName; }))
+			return injector::cstd<void* (char*)>::call(CModelInfoStore__allocateBaseModel, modelName);
     }
 
     return injector::cstd<void* (char*)>::call(CModelInfoStore__allocateInstanceModel, modelName);
@@ -640,7 +647,7 @@ void __cdecl CBaseModelInfo__setFlagsHook(void* pModel, int dwFlags, int a3)
         auto bitFlags = std::bitset<32>(dwFlags);
         if (bitFlags.test(no_shadow))
         {
-            if (bExtraDynamicShadows >= 3 || std::any_of(std::begin(modelNames), std::end(modelNames), [](auto& i) { return curModelName.contains(i); }))
+            if (bExtraDynamicShadows >= 3 || std::any_of(std::begin(modelNames), std::end(modelNames), [](auto& i) { return curModelName.find(i) != std::string::npos; }))
             {
                 bitFlags.reset(no_shadow);
                 bitFlags.reset(static_shadow_1);
@@ -672,7 +679,6 @@ void Init()
     //[FRAMELIMIT]
     nFrameLimitType = iniReader.ReadInteger("FRAMELIMIT", "FrameLimitType", 2);
     fFpsLimit = static_cast<float>(iniReader.ReadInteger("FRAMELIMIT", "FpsLimit", 0));
-    fCutsceneFpsLimit = static_cast<float>(iniReader.ReadInteger("FRAMELIMIT", "CutsceneFpsLimit", 0));
     fScriptCutsceneFpsLimit = static_cast<float>(iniReader.ReadInteger("FRAMELIMIT", "ScriptCutsceneFpsLimit", 0));
     fScriptCutsceneFovLimit = static_cast<float>(iniReader.ReadInteger("FRAMELIMIT", "ScriptCutsceneFovLimit", 0));
 
@@ -686,76 +692,63 @@ void Init()
     uint32_t nVehicleBudget = iniReader.ReadInteger("BudgetedIV", "VehicleBudget", 0);
     uint32_t nPedBudget = iniReader.ReadInteger("BudgetedIV", "PedBudget", 0);
 
-    static float& fTimeStep = **hook::get_pattern<float*>("F3 0F 10 05 ? ? ? ? F3 0F 59 05 ? ? ? ? 8B 43 20 53", 4);
+    static float& fTimeStep = **hook::get_pattern<float*>("F3 0F 59 44 24 18 83 C4 04", -4);
 
-    // reverse lights fix
-    {
-        auto pattern = hook::pattern("8B 40 64 FF D0 F3 0F 10 40 ? 8D 44 24 40 50");
-        injector::WriteMemory<uint8_t>(pattern.get_first(2), 0x60, true);
-    }
+	// reverse lights fix
+	{
+		auto pattern = hook::pattern("11 01 00 00 8B 16 8B 42 64 8B CE FF D0 F3 0F 10");
+		if (!pattern.empty()) injector::WriteMemory<uint8_t>(pattern.get_first(8), 0x60, true);
+	}
 
-    // animation fix for phone interaction on bikes
-    {
-        auto pattern = hook::pattern("83 3D ? ? ? ? 01 0F 8C 18 01 00 00");
-        injector::MakeNOP(pattern.get(0).get<int>(0), 13, true);
-    }
+	// animation fix for phone interaction on bikes
+	{
+		auto pattern = hook::pattern("80 BE 18 02 00 00 00 0F 85 36 01 00 00 80 BE");
+		if (!pattern.empty()) injector::MakeNOP(pattern.get(0).get<int>(0x21), 6, true);
+	}
 
     //fix for lods appearing inside normal models, unless the graphics menu was opened once (draw distances aren't set properly?)
     {
-        auto pattern = hook::pattern("E8 ? ? ? ? 8D 4C 24 10 F3 0F 11 05 ? ? ? ? E8 ? ? ? ? 8B F0 E8 ? ? ? ? DF 2D");
-        auto sub_477300 = injector::GetBranchDestination(pattern.get_first(0));
-        pattern = hook::pattern("E8 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? 83 C4 2C C3");
+        auto pattern = hook::pattern("E8 ? ? ? ? 8D 44 24 10 83 C4 04 50");
+        auto sub_477300 = injector::GetBranchDestination(pattern.get_first(0)); // sub_19E620
+        pattern = hook::pattern("E8 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? 8B 35 ? ? ? ? E8 ? ? ? ? 25 FF FF 00 00");
         injector::MakeCALL(pattern.get_first(0), sub_477300, true);
     }
 
     if (bSkipIntro)
     {
-        auto pattern = hook::pattern("8B 0D ? ? ? ? 8B 44 24 18 83 C4 0C 69 C9 ? ? ? ? 89 81");
-        static auto dword_15A6F0C = *pattern.count(2).get(1).get<int32_t*>(2);
-        struct Loadsc
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                *(int32_t*)&regs.ecx = *dword_15A6F0C;
-                *(int32_t*)&regs.eax = *(int32_t*)(regs.esp + 0x18);
-                if (!bSkipIntroNotNeeded && FusionFixSettings("PREF_SKIP_INTRO") && *(int32_t*)&regs.eax < 8000)
-                {
-                    regs.eax = 0;
-                }
-            }
-        }; injector::MakeInline<Loadsc>(pattern.count(2).get(1).get<void*>(0), pattern.count(2).get(1).get<void*>(10));
+		auto pattern = hook::pattern("89 91 ? ? ? ? 8D 44 24 ? 68 ? ? ? ? 50");
+		struct Loadsc
+		{
+			void operator()(injector::reg_pack& regs)
+			{
+				*(int32_t*)&regs.ecx *= 400;
+				if (!bSkipIntroNotNeeded && FusionFixSettings("PREF_SKIP_INTRO") && regs.edx < 8000)
+					regs.edx = 0;
+			}
+		}; injector::MakeInline<Loadsc>(pattern.get_first(-6), pattern.get_first(0));
     }
 
     //if (bSkipMenu)
     {
-        auto pattern = hook::pattern("E8 ? ? ? ? 83 C4 04 8B 8C 24 ? ? ? ? 5F 5E 5D 5B 33 CC E8 ? ? ? ? 81 C4 ? ? ? ? C3");
-        hbsub_7870A0.fun = injector::MakeCALL(pattern.count(5).get(1).get<void*>(0), sub_7870A0).get();
+        auto pattern = hook::pattern("83 F8 03 75 ? A1 ? ? ? ? 80 88 ? ? ? ? ? 84 DB 74 0A 6A 00 E8 ? ? ? ? 83 C4 04 5F 5E");
+		hbsub_7870A0.fun = injector::MakeCALL(pattern.get_first(23), sub_7870A0).get();
     }
 
     //if (bBorderlessWindowed)
     {
-        auto pattern = hook::pattern("FF 15 ? ? ? ? 8B F0 6A 01");
+        auto pattern = hook::pattern("FF 15 ? ? ? ? 8B F0 6A 01 56 FF 15");
         injector::MakeNOP(pattern.get_first(0), 6, true);
-        injector::MakeCALL(pattern.get_first(0), CreateWindowExA_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 8B 44 24 34");
+        injector::MakeCALL(pattern.get_first(0), CreateWindowExW_Hook, true);
+        pattern = hook::pattern("FF 15 ? ? ? ? 8B 4C 24 2C 89 3D");
         injector::MakeNOP(pattern.get_first(0), 6, true);
         injector::MakeCALL(pattern.get_first(0), MoveWindow_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 8B 54 24 24 8B 74 24 20");
+        pattern = hook::pattern("FF 15 ? ? ? ? 8B 7D F0 85 DB 8B 5D EC");
         injector::MakeNOP(pattern.get_first(0), 6, true);
         injector::MakeCALL(pattern.get_first(0), AdjustWindowRect_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 8B 44 24 10 85 C0");
-        injector::MakeNOP(pattern.get_first(0), 6, true);
-        injector::MakeCALL(pattern.get_first(0), AdjustWindowRect_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 8B 74 24 1C 8B 44 24 24");
-        injector::MakeNOP(pattern.get_first(0), 6, true);
-        injector::MakeCALL(pattern.get_first(0), AdjustWindowRect_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 80 3D ? ? ? ? ? 74 12");
+        pattern = hook::pattern("FF 15 ? ? ? ? 8B 4C 24 14 2B 4C 24 1C");
         injector::MakeNOP(pattern.get_first(0), 6, true);
         injector::MakeCALL(pattern.get_first(0), SetRect_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 6A 00 FF 35");
-        injector::MakeNOP(pattern.get_first(0), 6, true);
-        injector::MakeCALL(pattern.get_first(0), SetRect_Hook, true);
-        pattern = hook::pattern("FF 15 ? ? ? ? 6A 00 68 ? ? ? ? 8D 44 24 20");
+        pattern = hook::pattern("FF 15 ? ? ? ? 6A 00 68 00 00 CF 00 8D 55 E4");
         injector::MakeNOP(pattern.get_first(0), 6, true);
         injector::MakeCALL(pattern.get_first(0), SetRect_Hook, true);
 
@@ -767,77 +760,77 @@ void Init()
     //fix for zoom flag in tbogt
     if (nAimingZoomFix)
     {
-        auto pattern = hook::pattern("8A C1 32 05 ? ? ? ? 24 01 32 C1");
-        static auto& byte_F47AB1 = **pattern.get_first<uint8_t*>(4);
-        if (nAimingZoomFix > 1)
-            injector::MakeNOP(pattern.get_first(-2), 2, true);
-        else if (nAimingZoomFix < 0)
-            injector::WriteMemory<uint8_t>(pattern.get_first(-2), 0xEB, true);
+		auto pattern = hook::pattern("8A D0 32 15");
+		static auto& byte_F47AB1 = **pattern.get_first<uint8_t*>(4);
+		if (nAimingZoomFix > 1)
+			injector::MakeNOP(pattern.get_first(-2), 2, true);
+		else if (nAimingZoomFix < 0)
+			injector::WriteMemory<uint8_t>(pattern.get_first(-2), 0xEB, true);
 
-        pattern = hook::pattern("80 8E ? ? ? ? ? EB 43");
-        struct AimZoomHook1
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                *(uint8_t*)(regs.esi + 0x200) |= 1;
-                byte_F47AB1 = 1;
-            }
-        }; injector::MakeInline<AimZoomHook1>(pattern.get_first(0), pattern.get_first(7));
+		pattern = hook::pattern("08 9E ? ? ? ? E9");
+		struct AimZoomHook1
+		{
+			void operator()(injector::reg_pack& regs)
+			{
+				*(uint8_t*)(regs.esi + 0x200) |= 1;
+				byte_F47AB1 = 1;
+			}
+		}; injector::MakeInline<AimZoomHook1>(pattern.get_first(0), pattern.get_first(6));
 
-        pattern = hook::pattern("76 09 80 A6 ? ? ? ? ? EB 26");
-        struct AimZoomHook2
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                *(uint8_t*)(regs.esi + 0x200) &= 0xFE;
-                byte_F47AB1 = 0;
-            }
-        }; injector::MakeInline<AimZoomHook2>(pattern.get_first(2), pattern.get_first(9));
+		pattern = hook::pattern("80 A6 ? ? ? ? ? EB 25");
+		struct AimZoomHook2
+		{
+			void operator()(injector::reg_pack& regs)
+			{
+				*(uint8_t*)(regs.esi + 0x200) &= 0xFE;
+				byte_F47AB1 = 0;
+			}
+		}; injector::MakeInline<AimZoomHook2>(pattern.get_first(0), pattern.get_first(7));
 
-        //let's default to 0 as well
-        pattern = hook::pattern("C6 05 ? ? ? ? ? 74 12 83 3D");
-        injector::WriteMemory<uint8_t>(pattern.get_first(6), 0, true);
+		//let's default to 0 as well
+		pattern = hook::pattern("88 1D ? ? ? ? 74 10");
+		injector::WriteMemory<uint8_t>(pattern.get_first(1), 0x25, true); //mov ah  
     }
 
     if (bFlickeringShadowsFix)
     {
-        auto pattern = hook::pattern("C3 68 ? ? ? ? 6A 02 6A 00 E8 ? ? ? ? 83 C4 40 8B E5 5D C3");
-        injector::WriteMemory(pattern.count(2).get(1).get<void*>(2), 0x100, true);
+		auto pattern = hook::pattern("52 8D 44 24 50 50 68");
+		injector::WriteMemory(pattern.get_first(7), 0x100, true);
     }
 
     if (bRecoilFix)
     {
-        static float fRecMult = 0.65f;
-        auto pattern = hook::pattern("F3 0F 10 44 24 ? F3 0F 59 05 ? ? ? ? EB 1E");
-        injector::WriteMemory(pattern.get_first(10), &fRecMult, true);
+		static float fRecMult = 0.65f;
+		auto pattern = hook::pattern("F3 0F 10 44 24 ? F3 0F 59 05 ? ? ? ? EB ? E8");
+		injector::WriteMemory(pattern.get_first(10), &fRecMult, true);
     }
 
     if (bDefinitionFix)
     {
-        //disable forced definition-off in cutscenes
-        auto pattern = hook::pattern("E8 ? ? ? ? 0F B6 0D ? ? ? ? 33 D2 84 C0 0F 45 CA 8A C1 C3");
-        injector::MakeNOP(pattern.count(2).get(1).get<void*>(12), 7, true);
+		//disable forced definition-off in cutscenes
+		auto pattern = hook::pattern("E8 ? ? ? ? F6 D8 1A C0 F6 D0 22 05 ? ? ? ? C3"); //0x88CC6B
+		injector::WriteMemory<uint16_t>(pattern.get_first(11), 0xA090, true); //mov al ...
     }
 
     if (bEmissiveShaderFix)
-    {
-        // workaround for gta_emissivestrong.fxc lights on patch 6+,
+    { 
+		// workaround for gta_emissivestrong.fxc lights on patch 6+,
         //"A0 01 00 00 02 00 00 08" replaced in shader files with "A1 01 00 00 02 00 00 08" (5 occurrences)
-        auto pattern = hook::pattern("C1 E7 04 C1 E0 04 8B F7 8D 80 ? ? ? ? 89 4C 24 10 89 44 24 0C");
+        auto pattern = hook::pattern("C1 E7 04 C1 E3 04 8B C7 83 F8 04 8D 9B ? ? ? ? 8B CB 72 14 8B 32 3B 31 75 12 83 E8 04");
         struct ShaderTest
         {
             void operator()(injector::reg_pack& regs)
             {
                 if (
-                    *(uint32_t*)(regs.ebx + 0x00) == 0x39D1B717 &&
-                    *(uint32_t*)(regs.ebx + 0x10) == 0x41000000 && //traffic lights and lamps
-                    *(uint32_t*)(regs.ebx - 0x10) == 0x3B03126F &&
-                    *(uint32_t*)(regs.ebx + 0x20) == 0x3E59999A &&
-                    *(uint32_t*)(regs.ebx + 0x24) == 0x3F372474 &&
-                    *(uint32_t*)(regs.ebx + 0x28) == 0x3D93A92A
+                    *(uint32_t*)(regs.edx + 0x00) == 0x39D1B717 &&
+                    *(uint32_t*)(regs.edx + 0x10) == 0x41000000 && //traffic lights and lamps
+                    *(uint32_t*)(regs.edx - 0x10) == 0x3B03126F &&
+                    *(uint32_t*)(regs.edx + 0x20) == 0x3E59999A &&
+                    *(uint32_t*)(regs.edx + 0x24) == 0x3F372474 &&
+                    *(uint32_t*)(regs.edx + 0x28) == 0x3D93A92A
                 )
                 {
-                    auto f_ptr = (uint32_t*)(regs.ebx - 0x158);
+                    auto f_ptr = (uint32_t*)(regs.edx - 0x158);
                     if (f_ptr)
                     {
                         //auto f_00 = f_ptr[3];
@@ -855,89 +848,58 @@ void Init()
                         if ((f_05 != 0x7f800001 && f_05 != 0xcdcdcdcd && f_04 == 0x00000000 && f_08 != 0xba8bfc22 && f_02 != 0x3f800000)
                                 || (f_02 == 0x3f800000 && f_04 == 0x42480000 && f_05 == 0x00000000 && f_08 == 0x00000000))
                         {
-                            *(float*)(regs.ebx + 0x00) = -*(float*)(regs.ebx + 0x00);
+                            *(float*)(regs.edx + 0x00) = -*(float*)(regs.edx + 0x00);
                         }
                     }
                 }
 
                 regs.edi = regs.edi << 4;
-                regs.eax = regs.eax << 4;
+                regs.ebx = regs.ebx << 4;
             }
-        }; injector::MakeInline<ShaderTest>(pattern.count(2).get(1).get<void>(0), pattern.count(2).get(1).get<void>(6));
+        }; injector::MakeInline<ShaderTest>(pattern.count(2).get(1).get<void>(0), pattern.count(2).get(1).get<void>(6)); //417800  
     }
 
     if (bHandbrakeCamFix)
     {
-        static auto unk_117E700 = hook::get_pattern("68 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? F6 D8 1A C0", 1);
-        static auto GET_POSITION_OF_ANALOGUE_STICKS = hook::get_pattern("6A 00 E8 ? ? ? ? 83 C4 04 80 B8 ? ? ? ? ? 74 78", 0);
-        auto pattern = hook::pattern("F3 0F 10 44 24 ? F3 0F 11 04 24 8D 44 24 34 50 8D 44 24 28 50 53 8B CF");
-        struct HandbrakeCam
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                int pLeftX = 0;
-                int pLeftY = 0;
-                int pRightX = 0;
-                int pRightY = 0;
-                injector::cstd<void(int, int*, int*, int*, int*)>::call(GET_POSITION_OF_ANALOGUE_STICKS, 0, &pLeftX, &pLeftY, &pRightX, &pRightY);
-                if (pRightX == 0 && pRightY == 0)
-                    *(float*)(regs.esp + 0x2C) *= (1.0f / 30.0f) / fTimeStep;
-                //if (!*(uint8_t*)(*(uint32_t*)unk_117E700 + 0x328C))
-                //    *(float*)(regs.esp + 0x2C) *= (1.0f / 30.0f) / fTimeStep;
-                float f = *(float*)(regs.esp + 0x2C);
-                _asm movss xmm0, dword ptr[f]
-            }
-        }; injector::MakeInline<HandbrakeCam>(pattern.get_first(0), pattern.get_first(6));
+		static auto GET_POSITION_OF_ANALOGUE_STICKS = hook::get_pattern("6A 00 E8 ? ? ? ? 83 C4 04 80 B8 8C 32 00 00 00 74 78", 0);
+		auto pattern = hook::pattern("D9 44 24 20 8B 54 24 64 F3 0F 10 02 51 D9 1C 24 8D 44 24 20 50");
+		struct HandbrakeCam
+		{
+			void operator()(injector::reg_pack& regs)
+			{
+				int pLeftX = 0;
+				int pLeftY = 0;
+				int pRightX = 0;
+				int pRightY = 0;
+				injector::cstd<void(int, int*, int*, int*, int*)>::call(GET_POSITION_OF_ANALOGUE_STICKS, 0, &pLeftX, &pLeftY, &pRightX, &pRightY);
+				if (pRightX == 0 && pRightY == 0)
+					*(float*)(regs.esp + 0x20) *= (1.0f / 30.0f) / fTimeStep;
+				float f = *(float*)(regs.esp + 0x20);
+				regs.edx = *(uint32_t*)(regs.esp + 0x64);
+				_asm fld dword ptr[f]
+			}
+		}; injector::MakeInline<HandbrakeCam>(pattern.get_first(0), pattern.get_first(8));
     }
 
     //camera position in TLAD
     if (bDefaultCameraAngleInTLAD)
     {
         static uint32_t episode_id = 0;
-        auto pattern = hook::pattern("83 3D ? ? ? ? ? 8B 01 0F 44 C2 89 01 B0 01 C2 08 00");
-        injector::WriteMemory(pattern.count(2).get(0).get<void>(2), &episode_id, true);
+		auto pattern = hook::pattern("83 3D ? ? ? ? ? 75 06 C7 00 ? ? ? ? B0 01 C2 08 00");
+		injector::WriteMemory(pattern.count(2).get(0).get<void>(2), &episode_id, true);
     }
 
     if (bPedDeathAnimFixFromTBOGT)
     {
-        auto pattern = hook::pattern("8B D9 75 2E");
-        injector::MakeNOP(pattern.get_first(2), 2, true);
+		auto pattern = hook::pattern("BB ? ? ? ? 75 29");
+		injector::MakeNOP(pattern.get_first(5), 2, true);
     }
 
     if (bDisableCameraCenteringInCover)
     {
-        static constexpr float xmm_0 = FLT_MAX / 2.0f;
-        auto pattern = hook::pattern("F3 0F 10 05 ? ? ? ? F3 0F 58 47 ? F3 0F 11 47 ? 8B D1 89 54 24 10");
-        injector::WriteMemory(pattern.get_first(4), &xmm_0, true);
-    }
-
-    if (bMouseFix)
-    {
-        auto pattern = hook::pattern("B9 ? ? ? ? E8 ? ? ? ? 85 C0 0F 84 ? ? ? ? F3 0F 10 9C 24 ? ? ? ? F3 0F 10 A4 24 ? ? ? ? F3 0F 10 AC 24");
-        dword_F43AD8 = *pattern.get_first<uint32_t>(1);
-        pattern = hook::pattern("74 3D C7 05");
-        dword_1826D48 = *pattern.get_first<int32_t>(4);
-        dword_1826D34 = *pattern.get_first<int32_t>(14);
-        dword_1826D4C = *pattern.get_first<int32_t>(24);
-        dword_1826D6C = *pattern.get_first<int32_t>(34);
-        pattern = hook::pattern("51 8B 54 24 0C C7 04 24 ? ? ? ? 85 D2 75 0D 39 15 ? ? ? ? 75 17 D9 04 24 59 C3");
-        injector::MakeJMP(pattern.get_first(0), MouseFix, true);
-
-        //ped cam behaves the same way as aiming cam
-        static constexpr float f255 = 255.0f;
-        pattern = hook::pattern("F3 0F 59 05 ? ? ? ? F3 0F 2C C0 83 C4 0C");
-        injector::WriteMemory(pattern.get_first(4), &f255, true);
-
-        //sniper scope is slow
-        static constexpr float f01 = 0.1f;
-        pattern = hook::pattern("F3 0F 59 15 ? ? ? ? F3 0F 58 97");
-        injector::WriteMemory(pattern.get_first(4), &f01, true);
-        injector::WriteMemory(pattern.get_first(28), &f01, true);
-
-        //first person vehicle view is slow
-        pattern = hook::pattern("F3 0F 59 15 ? ? ? ? F3 0F 58 96");
-        injector::WriteMemory(pattern.get_first(4), &f01, true);
-        injector::WriteMemory(pattern.get_first(28), &f01, true);
+		static constexpr float xmm_0 = FLT_MAX / 2.0f;
+		auto pattern = hook::pattern("F3 0F 10 05 ? ? ? ? F3 0F 58 46 ? 89 8C 24");
+		injector::WriteMemory(pattern.get_first(4), &xmm_0, true);
     }
 
     //if (fFpsLimit || fCutsceneFpsLimit || fScriptCutsceneFpsLimit)
@@ -955,17 +917,16 @@ void Init()
                 FusionFixSettings.Set("PREF_FPS_LIMIT_PRESET", 0);
             FpsLimiter.Init(mode, fFpsLimit);
         }
-        CutsceneFpsLimiter.Init(mode, fCutsceneFpsLimit);
         ScriptCutsceneFpsLimiter.Init(mode, fScriptCutsceneFpsLimit);
 
-        auto pattern = hook::pattern("E8 ? ? ? ? 84 C0 75 89");
+        auto pattern = hook::pattern("E8 ? ? ? ? 84 C0 75 15 38 05");
         CCutscenes__hasCutsceneFinished = (bool(*)()) injector::GetBranchDestination(pattern.get_first(0)).get();
-        pattern = hook::pattern("E8 ? ? ? ? 84 C0 75 44 38 05 ? ? ? ? 74 26");
+        pattern = hook::pattern("E8 ? ? ? ? 84 C0 75 42 38 05");
         CCamera__isWidescreenBordersActive = (bool(*)()) injector::GetBranchDestination(pattern.get_first(0)).get();
 
-        pattern = hook::pattern("8B 35 ? ? ? ? 8B 0D ? ? ? ? 8B 15 ? ? ? ? A1");
-        injector::WriteMemory(pattern.get_first(0), 0x901CC483, true); //nop + add esp,1C
-        injector::MakeJMP(pattern.get_first(4), sub_855640, true); // + jmp
+		pattern = hook::pattern("A1 ? ? ? ? 83 F8 01 8B 0D ? ? ? ? 8B 15 ? ? ? ? 8B 35 ? ? ? ? 74 0D 3B CA");
+		injector::WriteMemory(pattern.get_first(0), 0x901CC483, true);
+		injector::MakeJMP(pattern.get_first(4), sub_855640, true);
 
         FusionFixSettings.SetCallback("PREF_FPS_LIMIT_PRESET", [](int32_t value) {
             auto mode = (nFrameLimitType == 2) ? FrameLimiter::FPSLimitMode::FPS_ACCURATE : FrameLimiter::FPSLimitMode::FPS_REALTIME;
@@ -975,53 +936,48 @@ void Init()
                 FpsLimiter.Init(mode, fFpsLimit);
         });
 
-        pattern = hook::pattern("80 3D ? ? ? ? ? 53 56 8A FA");
-        bLoadscreenShown = *pattern.get_first<uint8_t*>(2);
+		pattern = hook::pattern("80 3D ? ? ? ? 00 53 8A 5C 24 1C");
+		bLoadscreenShown = *pattern.get_first<uint8_t*>(2);
 
-        pattern = hook::pattern("8B 4C 24 04 8B 54 24 08 8B 41 08");
-        injector::MakeJMP(pattern.get_first(0), sub_411F50, true);
-
-        //unlimit loadscreens fps
-        //static float f0 = 0.0f;
-        //pattern = hook::pattern("F3 0F 10 05 ? ? ? ? 2B C1 1B D6 89 44 24 18 89 54 24 1C DF 6C 24 18 D9 5C 24 18 F3 0F 10 4C 24 ? F3 0F 59 0D ? ? ? ? 0F 2F C1");
-        //injector::WriteMemory(pattern.get_first(4), &f0, true);
+		pattern = hook::pattern("8B 54 24 04 8B 42 08 85 C0");
+		injector::MakeJMP(pattern.get_first(0), sub_411F50, true);
     }
 
     if (fScriptCutsceneFovLimit)
     {
-        auto pattern = hook::pattern("8B 4E 0C 89 48 60 5E C3");
-        struct SetFOVHook
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                float f = *(float*)(regs.esi + 0x0C);
-                *(float*)(regs.eax + 0x60) = f > fScriptCutsceneFovLimit ? f : fScriptCutsceneFovLimit;
-            }
-        }; injector::MakeInline<SetFOVHook>(pattern.get_first(0), pattern.get_first(6));
+		auto pattern = hook::pattern("D9 46 0C D9 58 60 5E C3");
+		struct SetFOVHook
+		{
+			void operator()(injector::reg_pack& regs)
+			{
+				float f = *(float*)(regs.esi + 0x0C);
+				*(float*)(regs.eax + 0x60) = f > fScriptCutsceneFovLimit ? f : fScriptCutsceneFovLimit;
+			}
+		}; injector::MakeInline<SetFOVHook>(pattern.get_first(0), pattern.get_first(6));
     }
 
     if (nVehicleBudget)
     {
-        auto pattern = hook::pattern("F7 2D ? ? ? ? 8B CA C1 E9 1F 03 CA B8 ? ? ? ? F7 2D ? ? ? ? 8B C2 C1 E8 1F 03 C2 89 0D ? ? ? ? A3 ? ? ? ? 83 C4 10 C3");
-        injector::WriteMemory(*pattern.get_first<void*>(2), nVehicleBudget, true);
+        auto pattern = hook::pattern("B8 56 55 55 55 F7 E9 8B 0D");
+        injector::WriteMemory(*pattern.get_first<void*>(-4), nVehicleBudget, true);
     }
 
     if (nPedBudget)
     {
-        auto pattern = hook::pattern("F7 2D ? ? ? ? 8B C2 C1 E8 1F 03 C2 89 0D ? ? ? ? A3 ? ? ? ? 83 C4 10 C3");
-        injector::WriteMemory(*pattern.get_first<void*>(2), nPedBudget, true);
+        auto pattern = hook::pattern("B8 56 55 55 55 F7 E9 8B 0D");
+        injector::WriteMemory(*pattern.get_first<void*>(9), nPedBudget, true);
     }
 
     {
         //IMG Loader
-        auto pattern = hook::pattern("E8 ? ? ? ? 6A 00 E8 ? ? ? ? 83 C4 14 6A 00");
+        auto pattern = hook::pattern("E8 ? ? ? ? 6A 00 E8 ? ? ? ? 83 C4 14 6A 00 B9");
         static auto CImgManager__addImgFile = (void(__cdecl*)(const char*, char, int)) injector::GetBranchDestination(pattern.get_first(0)).get();
         static auto sub_A95980 = (void(__cdecl*)(char)) injector::GetBranchDestination(pattern.get_first(7)).get();
 
-        pattern = hook::pattern("83 3D ? ? ? ? ? 75 0F 6A 02");
+        pattern = hook::pattern("39 35 ? ? ? ? 75 0E 56");
         static auto _dwCurrentEpisode = *pattern.get_first<int*>(2);
 
-        pattern = hook::pattern("89 44 24 44 8B 44 24 4C 53");
+        pattern = hook::pattern("89 44 24 44 8B 44 24 4C 57");
         struct ImgListHook
         {
             void operator()(injector::reg_pack& regs)
@@ -1052,7 +1008,7 @@ void Init()
                                 std::wstring str1(path.wstring()); std::wstring str2(base.wstring());
                                 std::transform(str1.begin(), str1.end(), str1.begin(), ::tolower);
                                 std::transform(str2.begin(), str2.end(), str2.begin(), ::tolower);
-                                return str1.contains(str2);
+								return str1.find(str2) != std::wstring::npos;
                             };
                             
                             auto imgPath = std::filesystem::relative(filePath, exePath).native();
@@ -1106,53 +1062,43 @@ void Init()
         if (FusionFixSettings("PREF_TIMECYC") < 5 || FusionFixSettings("PREF_TIMECYC") >= std::size(timecycText))
             FusionFixSettings.Set("PREF_TIMECYC", 5);
 
-        auto pattern = hook::pattern("E8 ? ? ? ? 8B F0 83 C4 08 85 F6 0F 84 ? ? ? ? BB");
+        auto pattern = hook::pattern("E8 ? ? ? ? 8B D8 83 C4 08 85 DB 0F 84 99 0D 00 00");
         CFileMgrOpenFile = injector::GetBranchDestination(pattern.get_first(0)).get();
         injector::MakeCALL(pattern.get_first(0), sub_8C4CF0, true);
 
-        pattern = hook::pattern("55 8B EC 83 E4 F0 81 EC ? ? ? ? 8B 0D ? ? ? ? 53 0F B7 41 04");
+        pattern = hook::pattern("55 8B EC 83 E4 F0 81 EC C4 02 00 00 A1 ? ? ? ? 33 C4 89 84 24 C0 02");
         static auto CTimeCycleInitialise = pattern.get_first(0);
 
-        static int bTimecycUpdated = 0;
         FusionFixSettings.SetCallback("PREF_TIMECYC", [](int32_t value) {
             injector::fastcall<void()>::call(CTimeCycleInitialise);
             bTimecycUpdated = 200;
         });
 
         // make timecyc changes visible in menu
-        pattern = hook::pattern("0A 05 ? ? ? ? 0A 05 ? ? ? ? 0F 85 ? ? ? ? E8 ? ? ? ? 84 C0 0F 85 ? ? ? ? F3 0F 10 05 ? ? ? ? F3 0F 11 04 24");
-        static auto byte_1173590 = *pattern.get_first<uint8_t*>(2);
-        struct MenuTimecycHook
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                *(uint8_t*)&regs.eax |= *byte_1173590;
-                if (bTimecycUpdated > 0) {
-                    *(uint8_t*)&regs.eax = 0;
-                    bTimecycUpdated--;
-                }
-            }
-        }; injector::MakeInline<MenuTimecycHook>(pattern.get_first(0), pattern.get_first(6));
-        pattern = hook::pattern("0A 05 ? ? ? ? 0A 05 ? ? ? ? 74 20");
-        injector::MakeInline<MenuTimecycHook>(pattern.get_first(0), pattern.get_first(6));
+		// this is a hack for 1080 because the code differs too much and im lazy
+        pattern = hook::pattern("E8 ? ? ? ? 84 C0 5F 0F 85 85 00 00 00");
+		injector::MakeJMP(pattern.get_first(8), pattern.get_first(23));
+        pattern = hook::pattern("E8 ? ? ? ? 84 C0 74 1F A1 ? ? ? ? 69 C0");
+		fnAD0B0 = injector::GetBranchDestination(pattern.get_first(0)).get();
+        injector::MakeCALL(pattern.get_first(0), sub_AD0B0);
+		
+		pattern = hook::pattern("E8 ? ? ? ? 0F B6 84 24 10 04 00 00");
+		injector::MakeCALL(pattern.get_first(0), timecyc_scanf, true);
 
-        pattern = hook::pattern("E8 ? ? ? ? 0F B6 8C 24 ? ? ? ? 0F B6 84 24");
-        injector::MakeCALL(pattern.get_first(0), timecyc_scanf, true);
-
-        FusionFixSettings.SetCallback("PREF_TCYC_DOF", [](int32_t value) {
-            injector::fastcall<void()>::call(CTimeCycleInitialise);
-            bTimecycUpdated = 200;
-        });
+		FusionFixSettings.SetCallback("PREF_TCYC_DOF", [](int32_t value) {
+			injector::fastcall<void()>::call(CTimeCycleInitialise);
+			bTimecycUpdated = 200;
+			});
     }
 
     // runtime settings
     {
-        auto pattern = hook::pattern("89 1C 95 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 83 C4 04");
+        auto pattern = hook::pattern("89 1C 8D ? ? ? ? E8");
         struct IniWriter
         {
             void operator()(injector::reg_pack& regs)
             {
-                auto id = regs.edx;
+                auto id = regs.ecx;
                 auto value = regs.ebx;
                 if (FusionFixSettings.isSame(id, "PREF_FPS_LIMIT_PRESET")) {
                     if (value == 1) {
@@ -1175,51 +1121,48 @@ void Init()
             }
         }; injector::MakeInline<IniWriter>(pattern.get_first(0), pattern.get_first(7));
 
-        pattern = hook::pattern("8B 1C 95 ? ? ? ? 89 54 24 14");
+        pattern = hook::pattern("8B 1C 8D ? ? ? ? 89 4C 24 18");
         struct MenuTogglesHook1
         {
             void operator()(injector::reg_pack& regs)
             {
-                regs.ebx = FusionFixSettings.Get(regs.edx);
+                regs.ebx = FusionFixSettings.Get(regs.ecx);
             }
         }; injector::MakeInline<MenuTogglesHook1>(pattern.get_first(0), pattern.get_first(7));
 
-        pattern = hook::pattern("8B 14 85 ? ? ? ? 66 83 F9 31");
+        pattern = hook::pattern("8B 0C 8D ? ? ? ? 75 12");
         struct MenuTogglesHook2
         {
             void operator()(injector::reg_pack& regs)
             {
-                regs.edx = FusionFixSettings.Get(regs.eax);
+                regs.ecx = FusionFixSettings.Get(regs.ecx);
             }
         }; injector::MakeInline<MenuTogglesHook2>(pattern.get_first(0), pattern.get_first(7));
 
         // show game in display menu
-        pattern = hook::pattern("75 1F FF 35 ? ? ? ? E8 ? ? ? ? 8B 4C 24 18");
-        injector::MakeNOP(pattern.get_first(), 2);
-
-        pattern = hook::pattern("83 F8 03 0F 44 CE");
-        struct MenuHook
-        {
-            void operator()(injector::reg_pack& regs)
-            {
-                regs.ecx = 1;
-            }
-        }; injector::MakeInline<MenuHook>(pattern.get_first(0), pattern.get_first(6));
-
-        pattern = hook::pattern("7E 4E 8A 1D");
-        injector::WriteMemory<uint8_t>(pattern.get_first(0), 0xEB, true);
+        // this seems to make the game not launch on GFWL for some reason, should be looked into further
+		if (IsXLivelessPresent())
+		{
+			pattern = hook::pattern("75 10 57 E8 ? ? ? ? 83 C4 04 83 F8 03");
+			injector::WriteMemory(pattern.get_first(), 0x0EEB);
+		
+			pattern = hook::pattern("83 F8 03 7F 06 B8 01 00 00 00 C3 33 C0 C3");
+			injector::MakeNOP(pattern.get_first(3), 2);
+		}
     }
 
     {
         static std::map<IDirect3DPixelShader9*, std::tuple<IDirect3DPixelShader9*, IDirect3DPixelShader9*, IDirect3DPixelShader9*, IDirect3DPixelShader9*>> shadermap;
-        auto pattern = hook::pattern("53 57 51 FF 90");
+        auto pattern = hook::pattern("50 8B 82 A8 01 00 00 56 51 FF D0");
         struct CreatePixelShaderHook
         {
             void operator()(injector::reg_pack& regs)
             {
+				*(uint32_t*)regs.eax = *(uint32_t*)(regs.edx + 0x1A8);
+
                 auto pDevice = (IDirect3DDevice9*)regs.ecx;
-                DWORD* pFunction = (DWORD*)regs.edi;
-                IDirect3DPixelShader9** ppShader = (IDirect3DPixelShader9**)regs.ebx;
+                DWORD* pFunction = (DWORD*)regs.esi;
+                IDirect3DPixelShader9** ppShader = (IDirect3DPixelShader9**)regs.eax;
                 pDevice->CreatePixelShader(pFunction, ppShader);
                 IDirect3DPixelShader9* pShader = *ppShader;
 
@@ -1264,18 +1207,18 @@ void Init()
                     }
                 }
             }
-        }; injector::MakeInline<CreatePixelShaderHook>(pattern.get_first(0), pattern.get_first(9));
+        }; injector::MakeInline<CreatePixelShaderHook>(pattern.get_first(0), pattern.get_first(11));
 
-        pattern = hook::pattern("A1 ? ? ? ? 52 8B 08 50 89 15 ? ? ? ? FF 91 ? ? ? ? 8B 44 24 10");
-        static auto pD3DDevice = *pattern.get_first<IDirect3DDevice9**>(1);
+        pattern = hook::pattern("8B 0D ? ? ? ? 8B 11 50 A3 ? ? ? ? 8B 82 AC 01 00 00 51 FF D0");
+        static auto pD3DDevice = *pattern.get_first<IDirect3DDevice9**>(2);
         struct SetPixelShaderHook
         {
             void operator()(injector::reg_pack& regs)
             {
-                regs.eax = *(uint32_t*)pD3DDevice;
+                regs.ecx = *(uint32_t*)pD3DDevice;
                 auto pDevice = *pD3DDevice;
                 {
-                    auto pShader = (IDirect3DPixelShader9*)regs.edx;
+                    auto pShader = (IDirect3DPixelShader9*)regs.eax;
                     if (shadermap.contains(pShader))
                     {
                         static auto fxaa = FusionFixSettings.GetRef("PREF_FXAA");
@@ -1284,32 +1227,31 @@ void Init()
                         {
                             if (fxaa->get())
                                 if (gamma->get())
-                                    regs.edx = (uint32_t)std::get<3>(shadermap.at(pShader));
+                                    regs.eax = (uint32_t)std::get<3>(shadermap.at(pShader));
                                 else
-                                    regs.edx = (uint32_t)std::get<2>(shadermap.at(pShader));
+                                    regs.eax = (uint32_t)std::get<2>(shadermap.at(pShader));
                             else
                                 if (gamma->get())
-                                    regs.edx = (uint32_t)std::get<1>(shadermap.at(pShader));
+                                    regs.eax = (uint32_t)std::get<1>(shadermap.at(pShader));
                                 else
-                                    regs.edx = (uint32_t)std::get<0>(shadermap.at(pShader));
+                                    regs.eax = (uint32_t)std::get<0>(shadermap.at(pShader));
                         }
                     }
                 }
             }
-        }; injector::MakeInline<SetPixelShaderHook>(pattern.get_first(0));
+        }; injector::MakeInline<SetPixelShaderHook>(pattern.get_first(0), pattern.get_first(6));
     }
 
     if (bExtraDynamicShadows || bDynamicShadowForTrees)
     {
-        auto pattern = hook::pattern("E8 ? ? ? ? EB 11 8D 44 24 54");
+        auto pattern = hook::pattern("E8 ? ? ? ? EB 0E 09 4C 24 08");
         CModelInfoStore__allocateBaseModel = injector::GetBranchDestination(pattern.get_first(0));
         injector::MakeCALL(pattern.get_first(0), CModelInfoStore__allocateBaseModelHook, true);
-        pattern = hook::pattern("E8 ? ? ? ? 8B F0 83 C4 04 8D 44 24 6C");
-        CModelInfoStore__allocateInstanceModel = injector::GetBranchDestination(pattern.get_first(0));
-        injector::MakeCALL(pattern.get_first(0), CModelInfoStore__allocateInstanceModelHook, true);
-        pattern = hook::pattern("D9 6C 24 0E 56");
-        CBaseModelInfo__setFlags = injector::GetBranchDestination(pattern.get_first(5));
-        injector::MakeCALL(pattern.get_first(5), CBaseModelInfo__setFlagsHook, true);
+        CModelInfoStore__allocateInstanceModel = injector::GetBranchDestination(pattern.get_first(16));
+        injector::MakeCALL(pattern.get_first(16), CModelInfoStore__allocateInstanceModelHook, true);
+        pattern = hook::pattern("E8 ? ? ? ? F3 0F 10 44 24 40 F3 0F 10 4C 24 44 F3 0F 10 54 24 3C");
+        CBaseModelInfo__setFlags = injector::GetBranchDestination(pattern.get_first(0));
+        injector::MakeCALL(pattern.get_first(0), CBaseModelInfo__setFlagsHook, true);
 
         std::vector<std::string> vegetationNames = {
             "bush", "weed", "grass", "azalea", "bholly", "fern", "tree"
@@ -1321,20 +1263,20 @@ void Init()
         //sway
         if (bDynamicShadowForTrees)
         {
-            static auto dw1036C00 = *hook::get_pattern<float*>("F3 0F 5C 2D ? ? ? ? F3 0F 10 35", 4);
+            static auto dw1036C00 = *hook::get_pattern<float*>("F3 0F 10 1D ? ? ? ? F3 0F 10 2D ? ? ? ? F3 0F 10 05", 4);
             static auto dw1036C04 = dw1036C00 + 1;
             static auto dw1036C08 = dw1036C00 + 2;
-            static auto dw11A2948 = *hook::get_pattern<float*>("C7 05 ? ? ? ? ? ? ? ? 0F 85 ? ? ? ? 6A 00", 2);
-            pattern = hook::pattern("8B 80 ? ? ? ? FF 74 24 20 8B 08 53 FF 74 24 20");
+            static auto dw11A2948 = *hook::get_pattern<float*>("F3 0F 11 05 ? ? ? ? 0F 85 04 03 00 00", 4);
+            pattern = hook::pattern("8B 81 AC 11 00 00 8B 4C 24 2C 8B 10 8B 92 78 01 00 00 83 C4 0C 51");
             struct SetVertexShaderConstantFHook
             {
                 void operator()(injector::reg_pack& regs)
                 {
-                    regs.eax = *(uint32_t*)(regs.eax + 0x11AC);
-                    auto pD3DDevice = (IDirect3DDevice9*)(regs.eax);
-                    auto StartRegister = *(UINT*)(regs.esp + 0x18);
-                    auto pConstantData = (float*)regs.ebx;
-                    auto Vector4fCount = *(UINT*)(regs.esp + 0x20);
+                    regs.eax = *(uint32_t*)(regs.ecx + 0x11AC);
+                    auto pD3DDevice = (IDirect3DDevice9*)(regs.ecx);
+                    auto StartRegister = *(UINT*)(regs.esp + 0x24);
+                    auto pConstantData = (float*)regs.esi;
+                    auto Vector4fCount = *(UINT*)(regs.esp + 0x2C);
 
                     if (StartRegister == 51 && Vector4fCount == 1) {
                         if (pConstantData[0] == 1.0f && pConstantData[1] == 1.0f && pConstantData[2] == 1.0f && pConstantData[3] == 1.0f) {
@@ -1347,20 +1289,20 @@ void Init()
                         }
                     }
                 }
-            }; injector::MakeInline<SetVertexShaderConstantFHook>(pattern.count(2).get(1).get<void*>(0), pattern.count(2).get(1).get<void*>(6));
+            }; injector::MakeInline<SetVertexShaderConstantFHook>(pattern.get_first(0), pattern.get_first(6));
         }
     }
 
-    // Make LOD lights appear at the appropriate time like on the console version (consoles: 7 PM, pc: 10 PM)
+    // Make LOD lights appear at the appropriate time like on the console versions (consoles: 7 PM, pc: 10 PM)
     {
-        auto pattern = hook::pattern("8D 42 13");
+        auto pattern = hook::pattern("8D 51 13");
         if (!pattern.empty()) injector::WriteMemory<uint8_t>(pattern.get_first(2), 0x10, true);
-        pattern = hook::pattern("8D 42 14 3B C8");
+        pattern = hook::pattern("83 C1 14 3B C1");
         if (!pattern.empty()) injector::WriteMemory<uint8_t>(pattern.get_first(2), 0x10, true);
         if (!pattern.empty()) injector::WriteMemory<uint8_t>(pattern.get_first(8), 0x07, true);
         // Removing episode id check that resulted in flickering LOD lights at certain camera angles in TBOGT
-        pattern = hook::pattern("83 3D ? ? ? ? ? 0F 85 ? ? ? ? F3 0F 10 05 ? ? ? ? F3 0F 10 8C 24");
-        if (!pattern.empty()) injector::WriteMemory<uint16_t>(pattern.get_first(7), 0xE990, true); // jnz -> jmp
+        pattern = hook::pattern("83 3D ? ? ? ? ? 75 68 F3 0F 10 05 ? ? ? ?");
+        if (!pattern.empty()) injector::MakeNOP(pattern.get_first(0), 113, true);
     }
 }
 
